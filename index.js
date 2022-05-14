@@ -23,6 +23,7 @@ const client = new MongoClient(uri, {
 });
 
 const doctorCollection = client.db("doctorServices").collection("services");
+const bookingCollection = client.db("doctorServices").collection("bookings");
 
 const run = async () => {
   try {
@@ -32,6 +33,43 @@ const run = async () => {
       const filter = doctorCollection.find({});
       const services = await filter.toArray();
       res.send(services);
+    });
+
+    // load data with update by using mongoDB aggression
+    app.get("/available/:id", async (req, res) => {
+      const date = req.params.id;
+      // load all services
+      const services = await doctorCollection.find({}).toArray();
+
+      // load bookings
+      const bookings = await bookingCollection.find({ date: date }).toArray();
+      services.forEach((service) => {
+        const serviceBookings = bookings.filter(
+          (book) => book.treatment == service.name
+        );
+        const booked = serviceBookings.map((s) => s.slot);
+        const available = service.slots.filter((s) => !booked.includes(s));
+        service.slots = available;
+      });
+      res.send(services);
+    });
+
+    // post booking
+    app.post("/bookings", async (req, res) => {
+      const booking = req.body;
+      const query = {
+        treatment: booking.treatment,
+        date: booking.date,
+        email: booking.email,
+      };
+      const alreadyBooking = await bookingCollection.findOne(query);
+      if (alreadyBooking) {
+        res.send({ success: false, alreadyBooking });
+      } else {
+        const result = await bookingCollection.insertOne(booking);
+
+        res.send({ success: true, result });
+      }
     });
   } finally {
   }
