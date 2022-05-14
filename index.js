@@ -15,7 +15,7 @@ app.get("/", (req, res) => {
 
 // Connect with database
 
-const uri = `mongodb+srv://doctorUser:BcGyC7H66mZqOqLB@cluster0.8fgrq.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.8fgrq.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -70,6 +70,15 @@ const run = async () => {
 
         res.send({ success: true, result });
       }
+    });
+
+    // data loaded by use email
+    app.get("/user/:id", async (req, res) => {
+      const email = req.params.id;
+      const query = { email };
+      const filter = bookingCollection.find(query);
+      const appoinemts = await filter.toArray();
+      res.send(appoinemts);
     });
   } finally {
   }
