@@ -4,17 +4,34 @@ const cors = require("cors");
 require("dotenv").config();
 const app = express();
 const port = process.env.PORT || 5000;
+const jwt = require("jsonwebtoken");
 
 // middleware
 app.use(cors());
 app.use(express.json());
+
+// verify token
+const verifyJWT = (req, res, next) => {
+  const headersToken = req.headers.authorization;
+  if (!headersToken) {
+    return res.status(401).send({ message: "Unauthorized Access" });
+  }
+  const token = headersToken.split(" ")[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+    if (err) {
+      return res.status(403).send({ message: "Forbidden Acess" });
+    } else {
+      req.decoded = decoded;
+      next();
+    }
+  });
+};
 
 app.get("/", (req, res) => {
   res.send("hellow world");
 });
 
 // Connect with database
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.8fgrq.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
@@ -24,6 +41,7 @@ const client = new MongoClient(uri, {
 
 const doctorCollection = client.db("doctorServices").collection("services");
 const bookingCollection = client.db("doctorServices").collection("bookings");
+const usersCollection = client.db("doctorServices").collection("users");
 
 const run = async () => {
   try {
@@ -73,12 +91,43 @@ const run = async () => {
     });
 
     // data loaded by use email
-    app.get("/user/:id", async (req, res) => {
+    app.get("/user/:id", verifyJWT, async (req, res) => {
+      const docodedEmail = req.decoded;
       const email = req.params.id;
       const query = { email };
-      const filter = bookingCollection.find(query);
-      const appoinemts = await filter.toArray();
-      res.send(appoinemts);
+      if (docodedEmail.email == email) {
+        const filter = bookingCollection.find(query);
+        const appoinemts = await filter.toArray();
+        res.send(appoinemts);
+      } else {
+        res.status(403).send({ message: "Forbidden Access" });
+      }
+    });
+
+    // send token
+    app.put("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = req.body;
+      const filter = { email: email };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: user,
+      };
+      const result = await usersCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN, {
+        expiresIn: "1d",
+      });
+      res.send({ accessToken, result });
+    });
+
+    // load all users
+    app.get("/users", verifyJWT, async (req, res) => {
+      const result = await usersCollection.find({}).toArray();
+      res.send(result);
     });
   } finally {
   }
