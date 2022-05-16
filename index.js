@@ -104,7 +104,7 @@ const run = async () => {
       }
     });
 
-    // send token
+    // send token for all users
     app.put("/users/:email", async (req, res) => {
       const email = req.params.email;
       const user = req.body;
@@ -122,6 +122,31 @@ const run = async () => {
         expiresIn: "1d",
       });
       res.send({ accessToken, result });
+    });
+
+    // add admin
+    app.put("/users/admin/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const filter = { email: email };
+      const requester = req.decoded.email;
+      const accessAdmin = await usersCollection.findOne({ email: requester });
+      if (accessAdmin.role === "admin") {
+        const updateDoc = {
+          $set: { role: "admin" },
+        };
+        const result = await usersCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      } else {
+        res.status(403).send({ message: "Forbidden Access" });
+      }
+    });
+
+    // get admin role
+    app.get("/admin/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const searchAdmin = await usersCollection.findOne({ email });
+      const admin = searchAdmin.role === "admin";
+      res.send({ admin });
     });
 
     // load all users
