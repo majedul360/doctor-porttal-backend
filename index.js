@@ -42,10 +42,21 @@ const client = new MongoClient(uri, {
 const serviceCollection = client.db("doctorServices").collection("services");
 const bookingCollection = client.db("doctorServices").collection("bookings");
 const usersCollection = client.db("doctorServices").collection("users");
+const doctorsCollection = client.db("doctorServices").collection("doctors");
 
 const run = async () => {
   try {
     await client.connect();
+    // verify admin middleware  function
+    const verifyADN = async (req, res, next) => {
+      const requester = req.decoded.email;
+      const accessAdmin = await usersCollection.findOne({ email: requester });
+      if (accessAdmin.role === "admin") {
+        next();
+      } else {
+        res.status(403).send({ message: "Forbidden Access" });
+      }
+    };
     // load doctor services from database
     app.get("/services", async (req, res) => {
       const filter = serviceCollection.find({}).project({ name: 1 });
@@ -125,20 +136,15 @@ const run = async () => {
     });
 
     // add admin
-    app.put("/users/admin/:email", verifyJWT, async (req, res) => {
+    app.put("/users/admin/:email", verifyJWT, verifyADN, async (req, res) => {
       const email = req.params.email;
       const filter = { email: email };
-      const requester = req.decoded.email;
-      const accessAdmin = await usersCollection.findOne({ email: requester });
-      if (accessAdmin.role === "admin") {
-        const updateDoc = {
-          $set: { role: "admin" },
-        };
-        const result = await usersCollection.updateOne(filter, updateDoc);
-        res.send(result);
-      } else {
-        res.status(403).send({ message: "Forbidden Access" });
-      }
+
+      const updateDoc = {
+        $set: { role: "admin" },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      res.send(result);
     });
 
     // get admin role
@@ -153,6 +159,13 @@ const run = async () => {
     app.get("/users", verifyJWT, async (req, res) => {
       const result = await usersCollection.find({}).toArray();
       res.send(result);
+    });
+
+    // add doctors
+    app.post("/doctors", verifyJWT, async (req, res) => {
+      const doctor = req.body;
+      const reselt = await doctorsCollection.insertOne(doctor);
+      res.send(reselt);
     });
   } finally {
   }
