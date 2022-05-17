@@ -48,7 +48,7 @@ const run = async () => {
     await client.connect();
     // load doctor services from database
     app.get("/services", async (req, res) => {
-      const filter = serviceCollection.find({});
+      const filter = serviceCollection.find({}).project({ name: 1 });
       const services = await filter.toArray();
       res.send(services);
     });
