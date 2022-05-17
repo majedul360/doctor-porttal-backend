@@ -162,10 +162,24 @@ const run = async () => {
     });
 
     // add doctors
-    app.post("/doctors", verifyJWT, async (req, res) => {
+    app.post("/doctors", verifyJWT, verifyADN, async (req, res) => {
       const doctor = req.body;
       const reselt = await doctorsCollection.insertOne(doctor);
       res.send(reselt);
+    });
+
+    // load doctors
+    app.get("/doctors", verifyJWT, verifyADN, async (req, res) => {
+      const result = await doctorsCollection.find({}).toArray();
+      res.send(result);
+    });
+
+    // delete doctor
+    app.delete("/doctor/:email", verifyJWT, verifyADN, async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const result = await doctorsCollection.deleteOne(query);
+      res.send(result);
     });
   } finally {
   }
