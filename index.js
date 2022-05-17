@@ -39,7 +39,7 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
-const doctorCollection = client.db("doctorServices").collection("services");
+const serviceCollection = client.db("doctorServices").collection("services");
 const bookingCollection = client.db("doctorServices").collection("bookings");
 const usersCollection = client.db("doctorServices").collection("users");
 
@@ -48,7 +48,7 @@ const run = async () => {
     await client.connect();
     // load doctor services from database
     app.get("/services", async (req, res) => {
-      const filter = doctorCollection.find({});
+      const filter = serviceCollection.find({});
       const services = await filter.toArray();
       res.send(services);
     });
@@ -57,7 +57,7 @@ const run = async () => {
     app.get("/available/:id", async (req, res) => {
       const date = req.params.id;
       // load all services
-      const services = await doctorCollection.find({}).toArray();
+      const services = await serviceCollection.find({}).toArray();
 
       // load bookings
       const bookings = await bookingCollection.find({ date: date }).toArray();
